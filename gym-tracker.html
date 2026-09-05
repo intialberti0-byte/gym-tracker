@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Iron Log</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #15171A;
+    color: #ECE8E1;
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+  }
+  header { padding: 28px 20px 18px; border-bottom: 1px solid #2A2D31; }
+  .header-row { display: flex; align-items: center; gap: 8px; }
+  h1 { font-family: 'Bebas Neue', sans-serif; font-size: 30px; letter-spacing: 0.06em; margin: 0; }
+  .sub { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #8B8F94; margin: 4px 0 0 30px; }
+  main { padding: 16px; display: flex; flex-direction: column; gap: 12px; max-width: 560px; margin: 0 auto; }
+  .backup-row { display: flex; gap: 8px; padding: 12px 16px 0; max-width: 560px; margin: 0 auto; }
+  .backup-btn, .cancel-btn, .remove-btn {
+    background: transparent; border: 1px solid #2A2D31; border-radius: 8px; color: #8B8F94;
+    font-size: 11px; font-family: 'IBM Plex Mono', monospace; padding: 6px 10px; cursor: pointer;
+  }
+  .backup-panel {
+    margin: 10px 16px 0; max-width: 528px; margin-left: auto; margin-right: auto;
+    background: #1E2124; border: 1px solid #2A2D31; border-radius: 10px; padding: 12px;
+  }
+  textarea {
+    width: 100%; min-height: 100px; background: #0F1012; border: 1px solid #2A2D31; border-radius: 6px;
+    color: #ABAFB4; padding: 8px; font-size: 11px; font-family: 'IBM Plex Mono', monospace; resize: vertical;
+  }
+  .card { background: #1E2124; border: 1px solid #2A2D31; border-radius: 12px; overflow: hidden; }
+  .card-head { display: flex; align-items: center; justify-content: space-between; padding: 16px; cursor: pointer; }
+  .lift-name { font-size: 15px; font-weight: 600; }
+  .lift-meta { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #8B8F94; margin-top: 3px; }
+  .stall-tag { color: #E3B23C; background: #2A2416; padding: 2px 6px; border-radius: 5px; font-size: 10px; margin-left: 6px; }
+  .top-weight { display: flex; align-items: baseline; gap: 3px; }
+  .top-weight-num { font-family: 'Bebas Neue', sans-serif; font-size: 30px; color: #E3B23C; line-height: 1; }
+  .top-weight-unit { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #8B8F94; }
+  .card-body { padding: 0 16px 18px; border-top: 1px solid #2A2D31; display: none; flex-direction: column; gap: 14px; }
+  .card-body.open { display: flex; }
+  .plan-row { display: flex; gap: 10px; margin-top: 14px; }
+  .pill { flex: 1; background: #25282C; border-radius: 10px; padding: 10px 12px; border: 1px solid #2A2D31; }
+  .pill.accent { border: 1px solid #4A3E22; background: #252118; }
+  .pill-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #8B8F94; text-transform: uppercase; }
+  .pill-weight { font-family: 'Bebas Neue', sans-serif; font-size: 22px; margin-top: 2px; }
+  .pill-unit { font-size: 11px; color: #8B8F94; margin-left: 2px; font-family: 'IBM Plex Mono', monospace; }
+  .pill-sets { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #8B8F94; margin-top: 2px; }
+  .plate-section { background: #191B1E; border-radius: 10px; padding: 12px; }
+  .plate-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #8B8F94; margin-bottom: 6px; }
+  .plate-row { display: flex; align-items: flex-end; gap: 4px; min-height: 42px; }
+  .plate-disc { border-radius: 3px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 2px; }
+  .plate-text { font-family: 'IBM Plex Mono', monospace; font-size: 8px; color: #15171A; font-weight: 600; }
+  .action-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .log-btn {
+    display: inline-flex; align-items: center; gap: 6px; background: #E3B23C; color: #15171A;
+    border: none; border-radius: 8px; padding: 9px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .log-form { background: #191B1E; border-radius: 10px; padding: 12px; display: none; flex-direction: column; gap: 10px; }
+  .log-form.open { display: flex; }
+  .rep-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .rep-row-label { font-size: 12px; color: #ABAFB4; flex: 1; }
+  .rep-input {
+    width: 56px; background: #25282C; border: 1px solid #2A2D31; border-radius: 6px; color: #ECE8E1;
+    padding: 6px 8px; font-size: 13px; font-family: 'IBM Plex Mono', monospace; text-align: center;
+  }
+  .history-toggle { background: none; border: none; color: #8B8F94; font-size: 11px; font-family: 'IBM Plex Mono', monospace; cursor: pointer; padding: 0; }
+  .history-box { margin-top: 8px; display: none; flex-direction: column; gap: 6px; background: #191B1E; border-radius: 8px; padding: 10px; }
+  .history-box.open { display: flex; }
+  .history-row { display: flex; gap: 10px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+  .history-date { color: #8B8F94; width: 74px; flex-shrink: 0; }
+  .history-result { width: 46px; flex-shrink: 0; font-weight: 600; }
+  .history-detail { color: #ABAFB4; }
+  .add-lift-btn {
+    display: flex; align-items: center; justify-content: center; gap: 6px; background: transparent;
+    border: 1px dashed #2A2D31; border-radius: 12px; padding: 14px; color: #8B8F94; font-size: 13px; cursor: pointer; width: 100%;
+  }
+  input[type=text], input[type=number], select {
+    background: #25282C; border: 1px solid #2A2D31; border-radius: 6px; color: #ECE8E1;
+    padding: 9px 10px; font-size: 13px; font-family: 'Inter', sans-serif; width: 100%;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-row"><h1>IRON LOG</h1></div>
+  <p class="sub">compound progression tracker — saved on this device</p>
+</header>
+
+<div class="backup-row">
+  <button class="backup-btn" onclick="toggleExport()">Export data</button>
+  <button class="backup-btn" onclick="toggleImport()">Import data</button>
+</div>
+<div class="backup-panel" id="exportPanel" style="display:none">
+  <div class="plate-label">copy this text and save it somewhere safe</div>
+  <textarea id="exportBox" readonly onclick="this.select()"></textarea>
+</div>
+<div class="backup-panel" id="importPanel" style="display:none">
+  <div class="plate-label">paste previously exported text below</div>
+  <textarea id="importBox" placeholder="paste exported JSON here"></textarea>
+  <div class="action-row" style="margin-top:8px">
+    <button class="log-btn" onclick="doImport()">Restore this data</button>
+  </div>
+  <div id="importMsg" style="font-size:12px;color:#8B8F94;font-family:'IBM Plex Mono',monospace;margin-top:6px"></div>
+</div>
+
+<main id="liftList"></main>
+
+<script>
+const BAR_KG = 20;
+const PLATE_LIB = [
+  { kg: 25, color: "#C1443B" }, { kg: 20, color: "#3D6FA5" }, { kg: 15, color: "#E3B23C" },
+  { kg: 10, color: "#4F9B62" }, { kg: 5, color: "#ECE8E1" }, { kg: 2.5, color: "#8B8F94" }, { kg: 1.25, color: "#5B5F63" },
+];
+const STORAGE_KEY = "iron-log-lifts-v1";
+
+const DEFAULT_LIFTS = [
+  { id: "squat", name: "Squat", type: "barbell", unit: "kg", topWeight: 90, increment: 2.5, backoffPct: 90, sets: 3, reps: 5, history: [] },
+  { id: "bench", name: "Bench Press", type: "barbell", unit: "kg", topWeight: 70, increment: 2.5, backoffPct: 90, sets: 3, reps: 5, history: [] },
+  { id: "pullup", name: "Weighted Pull-up", type: "added", unit: "kg", topWeight: 10, increment: 1.25, backoffPct: 90, sets: 3, reps: 5, history: [] },
+  { id: "rdl", name: "RDL", type: "barbell", unit: "kg", topWeight: 70, increment: 2.5, backoffPct: 90, sets: 3, reps: 5, history: [] },
+  { id: "row", name: "Bent Over Barbell Row", type: "barbell", unit: "kg", topWeight: 60, increment: 2.5, backoffPct: 90, sets: 3, reps: 5, history: [] },
+  { id: "curl", name: "Barbell Bicep Curl", type: "accessory", unit: "kg", topWeight: 20, increment: 1.25, backoffPct: 100, sets: 1, reps: 10, history: [] },
+];
+
+let lifts = load();
+let openId = null;
+let loggingId = null;
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return DEFAULT_LIFTS;
+}
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(lifts));
+}
+function round(kg, increment) {
+  const step = increment >= 2 ? 2.5 : 0.5;
+  return Math.round(kg / step) * step;
+}
+function platesPerSide(totalKg) {
+  let remaining = Math.max(0, (totalKg - BAR_KG) / 2);
+  const out = [];
+  for (const p of PLATE_LIB) {
+    while (remaining + 1e-9 >= p.kg) { out.push(p); remaining -= p.kg; }
+  }
+  return out;
+}
+function backoffWeight(lift) {
+  return round(lift.topWeight * (lift.backoffPct / 100), lift.increment);
+}
+function stalled(lift) {
+  const last2 = lift.history.slice(0, 2);
+  return last2.length === 2 && last2.every(s => s.allHit === false);
+}
+function applySession(lift, session) {
+  lift.history = [session, ...lift.history].slice(0, 50);
+  const lastTwo = lift.history.slice(0, 2).map(s => s.allHit);
+  if (session.allHit) {
+    lift.topWeight = round(lift.topWeight + lift.increment, lift.increment);
+  } else if (lastTwo.length === 2 && lastTwo[0] === false && lastTwo[1] === false) {
+    lift.topWeight = round(lift.topWeight * 0.9, lift.increment);
+  }
+}
+
+function toggleOpen(id) {
+  openId = openId === id ? null : id;
+  loggingId = null;
+  render();
+}
+function startLog(id) {
+  loggingId = id;
+  render();
+}
+function cancelLog() {
+  loggingId = null;
+  render();
+}
+function submitLog(id) {
+  const lift = lifts.find(l => l.id === id);
+  const inputs = document.querySelectorAll(`.rep-input[data-lift="${id}"]`);
+  const backoff = backoffWeight(lift);
+  const setsCompleted = Array.from(inputs).map((inp, i) => ({
+    weight: i === 0 ? lift.topWeight : backoff,
+    target: lift.reps,
+    reps: Math.max(0, Math.min(30, Number(inp.value) || 0)),
+  }));
+  const allHit = setsCompleted.every(s => s.reps >= s.target);
+  const date = new Date().toISOString().slice(0, 10);
+  applySession(lift, { date, setsCompleted, allHit });
+  save();
+  loggingId = null;
+  openId = id;
+  render();
+}
+function toggleHistory(id) {
+  const box = document.getElementById(`history-${id}`);
+  box.classList.toggle("open");
+}
+function removeLift(id) {
+  if (!confirm("Remove this lift and its history?")) return;
+  lifts = lifts.filter(l => l.id !== id);
+  save();
+  render();
+}
+function addLiftPrompt() {
+  const name = prompt("Lift name (e.g. Deadlift):");
+  if (!name) return;
+  const topWeight = Number(prompt("Current top set weight (kg):", "20")) || 20;
+  const increment = Number(prompt("Increment per session (kg):", "2.5")) || 2.5;
+  const type = confirm("Is this a barbell lift? (OK = yes, Cancel = bodyweight/added)") ? "barbell" : "added";
+  lifts.push({
+    id: name.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now(),
+    name, type, unit: "kg", topWeight, increment, backoffPct: 90, sets: 3, reps: 5, history: [],
+  });
+  save();
+  render();
+}
+
+function toggleExport() {
+  const panel = document.getElementById("exportPanel");
+  document.getElementById("importPanel").style.display = "none";
+  panel.style.display = panel.style.display === "none" ? "block" : "none";
+  document.getElementById("exportBox").value = JSON.stringify(lifts, null, 2);
+}
+function toggleImport() {
+  const panel = document.getElementById("importPanel");
+  document.getElementById("exportPanel").style.display = "none";
+  panel.style.display = panel.style.display === "none" ? "block" : "none";
+}
+function doImport() {
+  const text = document.getElementById("importBox").value;
+  try {
+    const parsed = JSON.parse(text);
+    if (!Array.isArray(parsed)) throw new Error("bad");
+    lifts = parsed;
+    save();
+    document.getElementById("importMsg").textContent = "Imported.";
+    render();
+  } catch (e) {
+    document.getElementById("importMsg").textContent = "That doesn't look like valid exported data.";
+  }
+}
+
+function plateRowHtml(weight) {
+  if (weight <= BAR_KG) return `<div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#5B5F63">bar only (${BAR_KG}kg)</div>`;
+  const plates = platesPerSide(weight);
+  return `<div class="plate-row">${plates.map(p => `
+    <div class="plate-disc" style="background:${p.color};height:${28 + p.kg*0.9}px;width:${8 + Math.min(p.kg,10)*0.6}px">
+      <span class="plate-text">${p.kg}</span>
+    </div>`).join("")}</div>`;
+}
+
+function liftCardHtml(lift) {
+  const backoff = backoffWeight(lift);
+  const last = lift.history[0];
+  const isStalled = stalled(lift);
+  const isOpen = openId === lift.id;
+  const isLogging = loggingId === lift.id;
+
+  const historyHtml = lift.history.map(s => `
+    <div class="history-row">
+      <span class="history-date">${s.date}</span>
+      <span class="history-result" style="color:${s.allHit ? '#4F9B62' : '#C1443B'}">${s.allHit ? 'hit' : 'missed'}</span>
+      <span class="history-detail">${s.setsCompleted.map(sc => `${sc.weight}${lift.unit}×${sc.reps}`).join(' · ')}</span>
+    </div>`).join("");
+
+  const repRowsHtml = Array.from({length: lift.sets}).map((_, i) => `
+    <div class="rep-row">
+      <span class="rep-row-label">${i === 0 ? 'top set' : `backoff ${i}`} — ${i === 0 ? lift.topWeight : backoff}${lift.unit} × ${lift.reps}</span>
+      <input type="number" class="rep-input" data-lift="${lift.id}" value="${lift.reps}" min="0" max="30" />
+    </div>`).join("");
+
+  return `
+  <div class="card">
+    <div class="card-head" onclick="toggleOpen('${lift.id}')">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="color:#8B8F94">${isOpen ? '▾' : '▸'}</span>
+        <div>
+          <div class="lift-name">${lift.name}</div>
+          <div class="lift-meta">${last ? `last: ${last.date}` : 'no sessions logged'}${isStalled ? '<span class="stall-tag">⟲ stalled — deload queued</span>' : ''}</div>
+        </div>
+      </div>
+      <div class="top-weight"><span class="top-weight-num">${lift.topWeight}</span><span class="top-weight-unit">${lift.unit}</span></div>
+    </div>
+    <div class="card-body ${isOpen ? 'open' : ''}">
+      <div class="plan-row">
+        <div class="pill accent">
+          <div class="pill-label">top set</div>
+          <div class="pill-weight">${lift.topWeight}<span class="pill-unit">${lift.unit}</span></div>
+          <div class="pill-sets">1 × ${lift.reps}</div>
+        </div>
+        ${lift.sets > 1 ? `
+        <div class="pill">
+          <div class="pill-label">backoff</div>
+          <div class="pill-weight">${backoff}<span class="pill-unit">${lift.unit}</span></div>
+          <div class="pill-sets">${lift.sets - 1} × ${lift.reps}</div>
+        </div>` : ''}
+      </div>
+      ${lift.type === "barbell" ? `
+      <div class="plate-section">
+        <div class="plate-label">load per side — top set (${lift.topWeight}${lift.unit})</div>
+        ${plateRowHtml(lift.topWeight)}
+        ${lift.sets > 1 ? `
+        <div class="plate-label" style="margin-top:10px">load per side — backoff (${backoff}${lift.unit})</div>
+        ${plateRowHtml(backoff)}` : ''}
+      </div>` : ''}
+      ${!isLogging ? `
+      <div class="action-row">
+        <button class="log-btn" onclick="startLog('${lift.id}')">🔥 Log session</button>
+        ${lift.history.length > 0 ? `
+        <button class="history-toggle" onclick="toggleHistory('${lift.id}')">history (${lift.history.length})</button>` : ''}
+        <button class="remove-btn" onclick="removeLift('${lift.id}')" style="margin-left:auto">remove lift</button>
+      </div>
+      ${lift.history.length > 0 ? `<div class="history-box" id="history-${lift.id}">${historyHtml}</div>` : ''}
+      ` : `
+      <div class="log-form open">
+        <div class="plate-label">reps completed per set</div>
+        ${repRowsHtml}
+        <div class="action-row">
+          <button class="log-btn" onclick="submitLog('${lift.id}')">✓ Save session</button>
+          <button class="cancel-btn" onclick="cancelLog()">✕ Cancel</button>
+        </div>
+      </div>`}
+    </div>
+  </div>`;
+}
+
+function render() {
+  const container = document.getElementById("liftList");
+  container.innerHTML = lifts.map(liftCardHtml).join("") +
+    `<button class="add-lift-btn" onclick="addLiftPrompt()">+ Add compound lift</button>`;
+}
+
+render();
+</script>
+</body>
+</html>
