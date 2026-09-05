@@ -63,7 +63,7 @@
   .log-form.open { display: flex; }
   .rep-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .rep-row-label { font-size: 12px; color: #ABAFB4; flex: 1; }
-  .rep-input {
+  .rep-input, .weight-input {
     width: 56px; background: #25282C; border: 1px solid #2A2D31; border-radius: 6px; color: #ECE8E1;
     padding: 6px 8px; font-size: 13px; font-family: 'IBM Plex Mono', monospace; text-align: center;
   }
@@ -85,12 +85,12 @@
 </style>
 </head>
 <body>
-
+ 
 <header>
   <div class="header-row"><h1>IRON LOG</h1></div>
   <p class="sub">compound progression tracker — saved on this device</p>
 </header>
-
+ 
 <div class="backup-row">
   <button class="backup-btn" onclick="toggleExport()">Export data</button>
   <button class="backup-btn" onclick="toggleImport()">Import data</button>
@@ -107,9 +107,9 @@
   </div>
   <div id="importMsg" style="font-size:12px;color:#8B8F94;font-family:'IBM Plex Mono',monospace;margin-top:6px"></div>
 </div>
-
+ 
 <main id="liftList"></main>
-
+ 
 <script>
 const BAR_KG = 20;
 const PLATE_LIB = [
@@ -117,7 +117,7 @@ const PLATE_LIB = [
   { kg: 10, color: "#4F9B62" }, { kg: 5, color: "#ECE8E1" }, { kg: 2.5, color: "#8B8F94" }, { kg: 1.25, color: "#5B5F63" },
 ];
 const STORAGE_KEY = "iron-log-lifts-v1";
-
+ 
 const DEFAULT_LIFTS = [
   { id: "squat", name: "Squat", type: "barbell", unit: "kg", topWeight: 90, increment: 2.5, backoffPct: 90, sets: 3, reps: 5, history: [] },
   { id: "bench", name: "Bench Press", type: "barbell", unit: "kg", topWeight: 70, increment: 2.5, backoffPct: 90, sets: 3, reps: 5, history: [] },
@@ -126,11 +126,11 @@ const DEFAULT_LIFTS = [
   { id: "row", name: "Bent Over Barbell Row", type: "barbell", unit: "kg", topWeight: 60, increment: 2.5, backoffPct: 90, sets: 3, reps: 5, history: [] },
   { id: "curl", name: "Barbell Bicep Curl", type: "accessory", unit: "kg", topWeight: 20, increment: 1.25, backoffPct: 100, sets: 1, reps: 10, history: [] },
 ];
-
+ 
 let lifts = load();
 let openId = null;
 let loggingId = null;
-
+ 
 function load() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -169,7 +169,7 @@ function applySession(lift, session) {
     lift.topWeight = round(lift.topWeight * 0.9, lift.increment);
   }
 }
-
+ 
 function toggleOpen(id) {
   openId = openId === id ? null : id;
   loggingId = null;
@@ -185,15 +185,20 @@ function cancelLog() {
 }
 function submitLog(id) {
   const lift = lifts.find(l => l.id === id);
-  const inputs = document.querySelectorAll(`.rep-input[data-lift="${id}"]`);
-  const backoff = backoffWeight(lift);
-  const setsCompleted = Array.from(inputs).map((inp, i) => ({
-    weight: i === 0 ? lift.topWeight : backoff,
+  const repInputs = document.querySelectorAll(`.rep-input[data-lift="${id}"]`);
+  const weightInputs = document.querySelectorAll(`.weight-input[data-lift="${id}"]`);
+  const setsCompleted = Array.from(repInputs).map((inp, i) => ({
+    weight: Math.max(0, Number(weightInputs[i].value) || 0),
     target: lift.reps,
     reps: Math.max(0, Math.min(30, Number(inp.value) || 0)),
   }));
   const allHit = setsCompleted.every(s => s.reps >= s.target);
   const date = new Date().toISOString().slice(0, 10);
+  // The top set's actual logged weight becomes the new baseline — if you
+  // lifted more or less than prescribed, the plan recalibrates from what
+  // actually happened rather than the old target.
+  const actualTopWeight = setsCompleted[0].weight || lift.topWeight;
+  lift.topWeight = actualTopWeight;
   applySession(lift, { date, setsCompleted, allHit });
   save();
   loggingId = null;
@@ -223,7 +228,7 @@ function addLiftPrompt() {
   save();
   render();
 }
-
+ 
 function toggleExport() {
   const panel = document.getElementById("exportPanel");
   document.getElementById("importPanel").style.display = "none";
@@ -248,7 +253,7 @@ function doImport() {
     document.getElementById("importMsg").textContent = "That doesn't look like valid exported data.";
   }
 }
-
+ 
 function plateRowHtml(weight) {
   if (weight <= BAR_KG) return `<div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#5B5F63">bar only (${BAR_KG}kg)</div>`;
   const plates = platesPerSide(weight);
@@ -257,27 +262,29 @@ function plateRowHtml(weight) {
       <span class="plate-text">${p.kg}</span>
     </div>`).join("")}</div>`;
 }
-
+ 
 function liftCardHtml(lift) {
   const backoff = backoffWeight(lift);
   const last = lift.history[0];
   const isStalled = stalled(lift);
   const isOpen = openId === lift.id;
   const isLogging = loggingId === lift.id;
-
+ 
   const historyHtml = lift.history.map(s => `
     <div class="history-row">
       <span class="history-date">${s.date}</span>
       <span class="history-result" style="color:${s.allHit ? '#4F9B62' : '#C1443B'}">${s.allHit ? 'hit' : 'missed'}</span>
       <span class="history-detail">${s.setsCompleted.map(sc => `${sc.weight}${lift.unit}×${sc.reps}`).join(' · ')}</span>
     </div>`).join("");
-
+ 
   const repRowsHtml = Array.from({length: lift.sets}).map((_, i) => `
     <div class="rep-row">
-      <span class="rep-row-label">${i === 0 ? 'top set' : `backoff ${i}`} — ${i === 0 ? lift.topWeight : backoff}${lift.unit} × ${lift.reps}</span>
+      <span class="rep-row-label">${i === 0 ? 'top set' : `backoff ${i}`} — target ${lift.reps} reps</span>
+      <input type="number" class="weight-input" data-lift="${lift.id}" value="${i === 0 ? lift.topWeight : backoff}" step="0.5" style="margin-right:6px" />
+      <span style="color:#5B5F63;font-size:11px">×</span>
       <input type="number" class="rep-input" data-lift="${lift.id}" value="${lift.reps}" min="0" max="30" />
     </div>`).join("");
-
+ 
   return `
   <div class="card">
     <div class="card-head" onclick="toggleOpen('${lift.id}')">
@@ -332,14 +339,15 @@ function liftCardHtml(lift) {
     </div>
   </div>`;
 }
-
+ 
 function render() {
   const container = document.getElementById("liftList");
   container.innerHTML = lifts.map(liftCardHtml).join("") +
     `<button class="add-lift-btn" onclick="addLiftPrompt()">+ Add compound lift</button>`;
 }
-
+ 
 render();
 </script>
 </body>
 </html>
+ 
