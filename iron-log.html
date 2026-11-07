@@ -308,7 +308,7 @@ const PLATE_LIB = [
   { kg: 10, color: "#4F9B62" }, { kg: 5, color: "#ECE8E1" }, { kg: 2.5, color: "#8B8F94" }, { kg: 1.25, color: "#5B5F63" },
 ];
 // Same keys as the previous version, so existing lift history carries over.
-const K = { lifts: "iron-log-lifts-v1", weights: "iron-log-weights-v1", food: "iron-log-food-v1", settings: "iron-log-settings-v1", foods: "iron-log-foods-v1", meals: "iron-log-meals-v1" };
+const K = { lifts: "iron-log-lifts-v1", weights: "iron-log-weights-v1", food: "iron-log-food-v1", settings: "iron-log-settings-v1", foods: "iron-log-foods-v1", meals: "iron-log-meals-v1", recipes: "iron-log-recipes-v1" };
 
 const DEFAULT_LIFTS = [
   { id: "squat", name: "Squat", type: "barbell", unit: "kg", topWeight: 90, increment: 2.5, backoffPct: 90, sets: 3, reps: 5, history: [] },
@@ -356,6 +356,7 @@ const saveFood = () => write(K.food, food);
 const saveSettings = () => write(K.settings, settings);
 const saveFoods = () => write(K.foods, myFoods);
 const saveMeals = () => write(K.meals, meals);
+const saveRecipes = () => write(K.recipes, recipes);
 
 let lifts = read(K.lifts, null);
 if (!Array.isArray(lifts)) { if (lifts !== null) blocked.add(K.lifts); lifts = clone(DEFAULT_LIFTS); }
@@ -363,10 +364,28 @@ let weights = read(K.weights, []);   if (!Array.isArray(weights)) { blocked.add(
 let food = read(K.food, []);         if (!Array.isArray(food)) { blocked.add(K.food); food = []; }
 let myFoods = read(K.foods, []);     if (!Array.isArray(myFoods)) { blocked.add(K.foods); myFoods = []; }
 let meals = read(K.meals, []);       if (!Array.isArray(meals)) { blocked.add(K.meals); meals = []; }
-let settings = Object.assign({ kcalTarget: 3000, goalWeight: null, heightCm: 172.7, range: "30", lastBackup: null }, read(K.settings, {}) || {});
+let recipes = read(K.recipes, null);
+if (!Array.isArray(recipes)) { if (recipes !== null) blocked.add(K.recipes); recipes = []; }
+let settings = Object.assign({ seedV: 0, kcalTarget: 3000, goalWeight: null, heightCm: 172.7, range: "30", lastBackup: null }, read(K.settings, {}) || {});
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
 
-const ui = { add: null, freq: [], tab: "dash", openLift: null, logging: null, foodDate: today(), chartLift: null, tables: {}, sheet: null };
+const ui = { rec: null, add: null, freq: [], tab: "dash", openLift: null, logging: null, foodDate: today(), chartLift: null, tables: {}, sheet: null };
+
+/* ============ one-time seed of Inti's staples ============ */
+if (!settings.seedV && !blocked.has(K.recipes) && !blocked.has(K.settings)) {
+  if (!recipes.some(r => r.id === "bolognese")) recipes.push({ id: "bolognese", name: "Bolognese sauce", cooked: 1700, est: true, ings: [
+    { name: "Beef mince 20% fat, raw", amt: 500, kcal: 254, prot: 17 },
+    { name: "Pork mince, raw (fat % unknown)", amt: 500, kcal: 200, prot: 17.5 },
+    { name: "Carrot (1)", amt: 80, kcal: 41, prot: 0.9 },
+    { name: "White onion (1)", amt: 150, kcal: 40, prot: 1.1 },
+    { name: "Celery (1 stick)", amt: 40, kcal: 16, prot: 0.7 },
+    { name: "Olive oil (2 tbsp)", amt: 27, kcal: 884, prot: 0 },
+    { name: "Tomato puree (half tube)", amt: 100, kcal: 82, prot: 4.5 },
+    { name: "Plum tomatoes (1 tin)", amt: 400, kcal: 21, prot: 1.2 },
+    { name: "Whole milk (1 cup)", amt: 240, kcal: 66, prot: 3.4 },
+    { name: "Veg bouillon (2 tsp)", amt: 10, kcal: 230, prot: 5 } ] });
+  saveRecipes(); settings.seedV = 1; saveSettings();
+}
 
 /* ============ lift logic (unchanged behaviour) ============ */
 function roundW(kg, increment) { const step = increment >= 2 ? 2.5 : 0.5; return Math.round(kg / step) * step; }
@@ -414,7 +433,7 @@ const DB = [
  ["Turkey breast, cooked",135,30,100,"g"],["Bacon, back, grilled",215,25,100,"g"],["Sausage, pork, grilled",280,14,100,"g"],["Ham, sliced",107,18,100,"g"],
  ["Salmon, cooked",206,22,100,"g"],["Salmon, raw",208,20,100,"g"],["Tuna, canned in water",116,26,100,"g"],["Cod, cooked",105,23,100,"g"],["Prawns, cooked",99,24,100,"g"],
  ["Egg, large",72,6.3,1,"egg"],["Egg whites",52,11,100,"g"],
- ["Whey protein powder",120,24,1,"scoop"],["Protein bar (typical)",210,20,1,"bar"],
+ ["Whey protein powder",120,24,1,"scoop"],["Orange juice, with bits",43,0.6,100,"ml"],["Sourdough bread",240,9,100,"g"],["Sourdough (slice, ~45g)",108,4,1,"slice"],["Protein bar (typical)",210,20,1,"bar"],
  ["Milk, whole",66,3.4,100,"ml"],["Milk, semi-skimmed",47,3.6,100,"ml"],["Milk, skimmed",34,3.5,100,"ml"],["Oat milk",46,1,100,"ml"],["Almond milk, unsweetened",13,0.4,100,"ml"],
  ["Greek yoghurt 0% (yogurt)",54,10.3,100,"g"],["Greek yoghurt full fat (yogurt)",97,9,100,"g"],["Skyr",63,11,100,"g"],["Cottage cheese",98,11,100,"g"],
  ["Cheddar cheese",416,25,100,"g"],["Mozzarella",280,22,100,"g"],["Feta",264,14,100,"g"],["Parmesan",431,38,100,"g"],["Halloumi",321,21,100,"g"],["Butter",717,0.9,100,"g"],
@@ -454,12 +473,16 @@ function parsedAmtFor(f, p) {
   if (f.per === 100) { if (!p.unit && p.amt < 10) return null; const mult = p.unit === "kg" || p.unit === "l" ? 1000 : p.unit === "oz" ? 28.35 : 1; return rnd1(p.amt * mult); }
   return !p.unit ? p.amt : null;
 }
+const recKcal = r => r.ings.reduce((a, i) => a + (Number(i.amt) || 0) * (Number(i.kcal) || 0) / 100, 0);
+const recProt = r => r.ings.reduce((a, i) => a + (Number(i.amt) || 0) * (Number(i.prot) || 0) / 100, 0);
+function recipeFood(r) { const c = Number(r.cooked) || 0; if (!(c > 0)) return null; return { id: "r:" + r.id, name: r.name + " (recipe)", kcal: Math.round(recKcal(r) / c * 1000) / 10, protein: rnd1(recProt(r) / c * 100), per: 100, unit: "g", src: "recipe" }; }
+const recipeFoods = () => recipes.map(recipeFood).filter(Boolean);
 function usageCounts() { const c = {}; for (const e of food) if (e.fid) c[e.fid] = (c[e.fid] || 0) + 1; return c; }
 function searchFoods(text) {
   const toks = text.toLowerCase().split(/[\s,]+/).filter(Boolean); if (!toks.length) return [];
   const stems = t => [t].concat(t.length > 3 && t.endsWith("es") ? [t.slice(0, -2), t.slice(0, -1)] : [], t.length > 3 && t.endsWith("s") ? [t.slice(0, -1)] : []);
   const use = usageCounts();
-  return myFoods.concat(BUILTIN).map(f => {
+  return myFoods.concat(recipeFoods(), BUILTIN).map(f => {
     const n = f.name.toLowerCase(); if (!toks.every(t => stems(t).some(x => n.includes(x)))) return null;
     const words = n.split(/[\s,()]+/), t0 = toks[0], st = stems(t0);
     const first = n.startsWith(t0) ? 0 : st.some(x => n.startsWith(x)) ? 1 : words.some(w => w.startsWith(t0)) ? 2 : words.some(w => st.some(x => w.startsWith(x))) ? 3 : 4;
@@ -811,6 +834,7 @@ function viewFood() {
     <button class="btn" data-act="openSheet" data-sheet="addFood" style="width:100%;padding:15px;font-size:16px">+ Add food</button>
     ${ui.freq.length ? `<div><div class="mono muted" style="font-size:10.5px;letter-spacing:.05em;margin:2px 2px 8px">FREQUENT — TAP TO ADD AGAIN</div><div class="chip-row" style="margin:0">${ui.freq.map((e, i) => `<button class="chip" data-act="logFreq" data-i="${i}">${esc(e.name || "Quick add")}${e.amt != null ? ` <span class="muted mono">${esc(amtLabel(e))}</span>` : ` <span class="muted mono">${fmtNum(e.kcal, 0)}</span>`}</button>`).join("")}</div></div>` : ""}
     ${meals.length ? `<div><div class="mono muted" style="font-size:10.5px;letter-spacing:.05em;margin:2px 2px 8px">SAVED MEALS</div><div class="card">${meals.map(m => `<div class="entry"><div class="nm">${esc(m.name)}<small>${esc(m.items.map(it => it.name.split(",")[0] + " " + amtLabel(it)).join(" · "))}</small></div><div class="kc">${fmtNum(mealKcal(m), 0)}</div><button class="btn small" data-act="logMeal" data-id="${esc(m.id)}">Log</button><button class="x-btn" data-act="delMeal" data-id="${esc(m.id)}" aria-label="Delete meal">×</button></div>`).join("")}</div></div>` : ""}
+    <div><div class="mono muted" style="font-size:10.5px;letter-spacing:.05em;margin:2px 2px 8px">RECIPES</div><div class="card">${recipes.map(r => { const f = recipeFood(r); return `<div class="entry"><div class="nm">${esc(r.name)}<small>${f ? fmtNum(f.kcal, 0) + " kcal / 100 g" + (r.est ? " · estimate" : "") : "add cooked weight"}</small></div>${f ? `<button class="btn small" data-act="logRecipe" data-id="${esc(r.id)}">Log</button>` : ""}<button class="btn ghost small" data-act="editRecipe" data-id="${esc(r.id)}">Edit</button></div>`; }).join("")}<div class="entry"><button class="btn ghost small" data-act="editRecipe" data-id="">+ New recipe</button></div></div></div>
     <div class="card">${items.length ? items.map(e => `<div class="entry"><div class="nm">${esc(e.name || "Quick add")}<small>${esc([e.amt != null ? amtLabel(e) : "", e.protein ? fmtNum(e.protein, 0) + " g protein" : ""].filter(Boolean).join(" · "))}</small></div><div class="kc">${fmtNum(e.kcal, 0)}</div><button class="x-btn" data-act="delFood" data-id="${esc(e.id)}" aria-label="Delete">×</button></div>`).join("") : '<div class="empty">Nothing logged for this day.</div>'}</div>
   </div>`;
 }
@@ -865,6 +889,17 @@ function sheetHtml() {
     <div id="add-main"></div><div id="add-basket"></div>
     <div class="actions" id="add-foot"><button class="btn ghost small" data-act="addMode" data-m="manual">Enter calories manually</button><button class="btn ghost small" data-act="addMode" data-m="custom">Create custom food</button></div>
   </div></div>`;
+  if (ui.sheet === "recipe" && ui.rec) { const r = ui.rec; return `<div class="sheet-bg" data-act="closeSheet"><div class="sheet">
+    <div style="display:flex;justify-content:space-between;align-items:center"><h2>${r.isNew ? "New recipe" : "Edit recipe"}</h2><button class="mini" data-act="closeRecipe">Cancel</button></div>
+    <label class="f">Recipe name<input value="${esc(r.name)}" data-input="recName" autocomplete="off" placeholder="e.g. Chilli"></label>
+    <div class="mono muted" style="font-size:10.5px;letter-spacing:.05em">INGREDIENTS — AMOUNT USED + LABEL VALUES PER 100 G</div>
+    ${r.ings.map((i, n) => `<div class="card pad stack" style="gap:8px;background:var(--surface-2);padding:12px"><div style="display:flex;gap:8px"><input value="${esc(i.name)}" data-input="recIng" data-i="${n}" data-k="name" placeholder="Ingredient" style="flex:1"><button class="x-btn" data-act="recDel" data-i="${n}" aria-label="Remove">×</button></div>
+      <div class="row"><label class="f">Grams<input type="number" inputmode="decimal" value="${esc(i.amt)}" data-input="recIng" data-i="${n}" data-k="amt"></label><label class="f">kcal/100g<input type="number" inputmode="decimal" value="${esc(i.kcal)}" data-input="recIng" data-i="${n}" data-k="kcal"></label><label class="f">Protein<input type="number" inputmode="decimal" value="${esc(i.prot)}" data-input="recIng" data-i="${n}" data-k="prot"></label></div></div>`).join("")}
+    <button class="btn ghost small" data-act="recAdd" style="align-self:flex-start">+ Add ingredient</button>
+    <label class="f">Cooked weight of the whole batch (g)<input type="number" inputmode="decimal" value="${esc(r.cooked)}" data-input="recCooked" placeholder="weigh pot + sauce, minus empty pot"></label>
+    ${r.est ? `<div class="hint">1,700 g is a guess. Weigh your pot next time you cook and enter it here for exact numbers.</div>` : ""}
+    <div class="card pad" id="rec-tot" style="background:var(--surface-2)"></div>
+    <div class="actions"><button class="btn" data-act="saveRecipe">Save recipe</button>${r.isNew ? "" : `<button class="btn ghost" data-act="delRecipe">Delete</button>`}</div></div></div>`; }
   if (ui.sheet === "addLift") return `<div class="sheet-bg" data-act="closeSheet"><div class="sheet"><h2>Add lift</h2>
     <label class="f">Name<input id="a-name" placeholder="e.g. Deadlift" autocomplete="off"></label>
     <div class="row"><label class="f">Top set (kg)<input id="a-top" type="number" inputmode="decimal" step="0.25" value="20"></label><label class="f">Jump (kg)<input id="a-inc" type="number" inputmode="decimal" step="0.25" value="2.5"></label></div>
@@ -880,6 +915,7 @@ function render() {
   $("#overlay").innerHTML = sheetHtml();
   drawAllCharts();
   if (ui.sheet === "addFood" && ui.add) { addRenderMain(); addRenderBasket(); }
+  if (ui.sheet === "recipe") recTotals();
 }
 function toast(msg) {
   const b = $("#toastbox"); b.innerHTML = `<div class="toast">${esc(msg)}</div>`;
@@ -975,6 +1011,29 @@ const A = {
     saveFood(); render(); toast(m.name + " logged · " + fmtNum(tot, 0) + " kcal");
   },
   delMeal: d => { const m = meals.find(x => x.id === d.id); if (m && confirm('Delete the saved meal "' + m.name + '"? (Your logged entries stay.)')) { meals = meals.filter(x => x !== m); saveMeals(); render(); } },
+  logRecipe: d => {
+    const r = recipes.find(x => x.id === d.id), f = r && recipeFood(r); if (!f) return;
+    ui.sheet = "addFood"; ui.add = newAdd(); ui.add.sel = f; ui.add.amt = lastAmt(f) || 250; render();
+    setTimeout(() => { const el = $("#add-amt"); if (el) { el.focus(); el.select(); } }, 60);
+  },
+  editRecipe: d => {
+    const r = recipes.find(x => x.id === d.id);
+    ui.rec = r ? Object.assign(clone(r), { isNew: false }) : { id: "r" + Date.now(), name: "", cooked: "", isNew: true, ings: [{ name: "", amt: "", kcal: "", prot: "" }] };
+    ui.sheet = "recipe"; render();
+  },
+  closeRecipe: () => { ui.sheet = null; ui.rec = null; render(); },
+  recAdd: () => { ui.rec.ings.push({ name: "", amt: "", kcal: "", prot: "" }); render(); },
+  recDel: d => { ui.rec.ings.splice(Number(d.i), 1); render(); },
+  saveRecipe: () => {
+    const r = ui.rec, name = r.name.trim(); if (!name) return toast("Give the recipe a name.");
+    const ings = r.ings.filter(i => (i.name || "").trim() || Number(i.amt)).map(i => ({ name: i.name.trim() || "Ingredient", amt: Number(i.amt) || 0, kcal: Number(i.kcal) || 0, prot: Number(i.prot) || 0 }));
+    if (!ings.length) return toast("Add at least one ingredient.");
+    const cooked = Number(r.cooked); if (!(cooked > 0)) return toast("Enter the cooked weight of the batch.");
+    const out = { id: r.id, name, cooked, ings }; if (r.est && cooked === 1700) out.est = true;
+    const i = recipes.findIndex(x => x.id === r.id); if (i >= 0) recipes[i] = out; else recipes.push(out);
+    saveRecipes(); ui.sheet = null; ui.rec = null; render(); toast(name + " saved");
+  },
+  delRecipe: () => { const r = ui.rec; if (!confirm('Delete "' + r.name + '"? (Logged entries stay.)')) return; recipes = recipes.filter(x => x.id !== r.id); saveRecipes(); ui.sheet = null; ui.rec = null; render(); },
   delFood: d => { food = food.filter(e => e.id !== d.id); saveFood(); render(); },
 
   logWeight: () => {
@@ -1010,12 +1069,13 @@ const A = {
     if (Array.isArray(data.weights)) { weights = data.weights; blocked.delete(K.weights); saveWeights(); }
     if (Array.isArray(data.food)) { food = data.food; blocked.delete(K.food); saveFood(); }
     if (Array.isArray(data.foods)) { myFoods = data.foods; blocked.delete(K.foods); saveFoods(); }
+    if (Array.isArray(data.recipes)) { recipes = data.recipes; blocked.delete(K.recipes); saveRecipes(); }
     if (Array.isArray(data.meals)) { meals = data.meals; blocked.delete(K.meals); saveMeals(); }
     if (data.settings && typeof data.settings === "object") { settings = Object.assign(settings, data.settings); blocked.delete(K.settings); saveSettings(); }
     ui.sheet = null; render(); toast("Backup restored.");
   },
 };
-function exportJson() { return JSON.stringify({ app: "iron-log", version: 2, exported: new Date().toISOString(), lifts, weights, food, foods: myFoods, meals, settings }, null, 2); }
+function exportJson() { return JSON.stringify({ app: "iron-log", version: 2, exported: new Date().toISOString(), lifts, weights, food, foods: myFoods, meals, recipes, settings }, null, 2); }
 function markBackup() { settings.lastBackup = today(); saveSettings(); }
 
 const newAdd = () => ({ mode: "search", q: "", sel: null, amt: "", results: [], online: null, busy: false, basket: [], askMeal: false });
@@ -1066,7 +1126,15 @@ function finishBasket(mealName) {
   });
   saveFood(); saveFoods(); const n = a.basket.length; ui.sheet = null; ui.add = null; render(); toast(n + (n > 1 ? " items" : " item") + " logged · " + fmtNum(tot, 0) + " kcal");
 }
+function recTotals() {
+  const r = ui.rec, el = $("#rec-tot"); if (!r || !el) return;
+  const k = recKcal(r), p = recProt(r), c = Number(r.cooked) || 0;
+  el.innerHTML = `<div class="mono" style="font-size:12.5px;color:var(--text-2)">Whole batch: ${fmtNum(k, 0)} kcal · ${fmtNum(p, 0)} g protein</div>` + (c > 0 ? `<div style="font-weight:650;margin-top:6px">${fmtNum(k / c * 100, 0)} kcal · ${fmtNum(p / c * 100, 1)} g protein per 100 g</div>` : `<div class="muted" style="margin-top:6px;font-size:13px">Enter the cooked weight to get per-100 g values.</div>`);
+}
 const I = {
+  recName: t => { ui.rec.name = t.value; },
+  recCooked: t => { ui.rec.cooked = t.value; ui.rec.est = false; recTotals(); },
+  recIng: t => { ui.rec.ings[Number(t.dataset.i)][t.dataset.k] = t.value; recTotals(); },
   addQ: t => { const a = ui.add; a.q = t.value; a.online = null; a.busy = false; a.results = searchFoods(parseQuery(a.q).text); addRenderMain(); },
   addAmt: () => addPreview(),
 };
